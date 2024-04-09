@@ -1,5 +1,6 @@
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -27,40 +28,37 @@ public class TxHandler {
      *         values; and false otherwise.
      */
     public boolean isValidTx(Transaction tx) {
-        int sum_input = 0;
-        int sum_output = 0;
+
+        double sum_input = 0.0;
+        double sum_output = 0.0;
         Set<UTXO> utxoSet = new HashSet<UTXO>();
         for (Transaction.Output tx_output : tx.getOutputs()) {
             if (tx_output.value < 0)
                 return false;
             sum_output += tx_output.value;
         }
-        if (tx.isCoinbase() == true) {
-            if (tx.getInputs().size() != 1)
-                return false;
 
-        } else {
-
-            ArrayList<Transaction.Input> tx_inputs = tx.getInputs();
-            for (Transaction.Input tx_input : tx_inputs) {
-                byte[] prevTxHash = tx_input.prevTxHash;
-                int outputIndex = tx_input.outputIndex;
-                UTXO utxo = new UTXO(prevTxHash, outputIndex);
-                utxoSet.add(utxo);
-                if (!utxoPool.contains(utxo))
-                    return false;
-                sum_input += utxoPool.getTxOutput(utxo).value;
-                byte[] signature = tx_input.signature;
-                byte[] RawDataToSign = tx.getRawDataToSign(tx_inputs.indexOf(tx_input));
-                PublicKey prev_tx_output_address = utxoPool.getTxOutput(utxo).address;
-                if (!Crypto.verifySignature(prev_tx_output_address, RawDataToSign, signature))
-                    return false;
-            }
-            if (utxoSet.size() != tx_inputs.size())
+        ArrayList<Transaction.Input> tx_inputs = tx.getInputs();
+        for (Transaction.Input tx_input : tx_inputs) {
+            byte[] prevTxHash = tx_input.prevTxHash;
+            int outputIndex = tx_input.outputIndex;
+            UTXO utxo = new UTXO(prevTxHash, outputIndex);
+            utxoSet.add(utxo);
+            if (!utxoPool.contains(utxo))
                 return false;
-            if (sum_input < sum_output)
+            sum_input += utxoPool.getTxOutput(utxo).value;
+            byte[] signature = tx_input.signature;
+            byte[] RawDataToSign = tx.getRawDataToSign(tx_inputs.indexOf(tx_input));
+            PublicKey prev_tx_output_address = utxoPool.getTxOutput(utxo).address;
+            if (!Crypto.verifySignature(prev_tx_output_address, RawDataToSign, signature))
                 return false;
         }
+
+        if (utxoSet.size() != tx_inputs.size())
+            return false;
+
+        if (!(sum_input >= sum_output))
+            return false;
 
         // IMPLEMENT THIS
         return true;
@@ -74,7 +72,7 @@ public class TxHandler {
      * updating the current UTXO pool as appropriate.
      */
     public Transaction[] handleTxs(Transaction[] possibleTxs) {
-        ArrayList<Transaction> acceptedTxsList = new ArrayList<Transaction>();
+        ArrayList<Transaction> acceptedTxsList = new ArrayList<>(Arrays.asList(possibleTxs));
         for (Transaction tx : possibleTxs) {
             if (isValidTx(tx)) {
                 for (Transaction.Input tx_input : tx.getInputs()) {
@@ -82,11 +80,14 @@ public class TxHandler {
                     int prevOutputIndex = tx_input.outputIndex;
                     UTXO oldUtxo = new UTXO(prevTxHash, prevOutputIndex);
                     utxoPool.removeUTXO(oldUtxo);
+
                 }
                 for (Transaction.Output tx_output : tx.getOutputs()) {
                     UTXO newUtxo = new UTXO(tx.getHash(), tx.getOutputs().indexOf(tx_output));
                     utxoPool.addUTXO(newUtxo, tx_output);
                 }
+            } else {
+                acceptedTxsList.remove(tx);
             }
         }
         // IMPLEMENT THIS
