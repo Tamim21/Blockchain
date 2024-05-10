@@ -1,4 +1,3 @@
-
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
@@ -49,11 +48,11 @@ public class Block {
         if (prevBlockHash != null)
             for (int i = 0; i < prevBlockHash.length; i++)
                 rawBlock.add(prevBlockHash[i]);
-			
-		byte[] rawCoinbase = coinbase.getRawTx();
-	    for (int j = 0; j < rawCoinbase.length; j++) {
-			rawBlock.add(rawCoinbase[j]);
-		}
+
+        byte[] rawCoinbase = coinbase.getRawTx();
+        for (int j = 0; j < rawCoinbase.length; j++) {
+            rawBlock.add(rawCoinbase[j]);
+        }
         for (int i = 0; i < txs.size(); i++) {
             byte[] rawTx = txs.get(i).getRawTx();
             for (int j = 0; j < rawTx.length; j++) {
